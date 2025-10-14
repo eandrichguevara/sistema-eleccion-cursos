@@ -5,11 +5,37 @@
 	font-family: Arial, sans-serif;
 }
 
+.header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 2rem;
+	gap: 1rem;
+}
+
 .title {
 	font-size: 2rem;
 	color: #333;
+	margin: 0;
+	flex: 1;
 	text-align: center;
-	margin-bottom: 2rem;
+}
+
+.logoutButton {
+	padding: 0.5rem 1rem;
+	background-color: #dc3545;
+	color: white;
+	border: none;
+	border-radius: 6px;
+	font-size: 0.9rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background-color 0.2s;
+	white-space: nowrap;
+}
+
+.logoutButton:hover {
+	background-color: #c82333;
 }
 
 .selectionSummary {
@@ -203,6 +229,20 @@
 
 /* Responsive design */
 @media (max-width: 768px) {
+	.header {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.title {
+		text-align: center;
+		font-size: 1.5rem;
+	}
+
+	.logoutButton {
+		width: 100%;
+	}
+
 	.paralelos {
 		grid-template-columns: 1fr;
 	}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { signOut } from "next-auth/react";
 import styles from "./Dashboard.module.css";
 import CourseCard from "@/components/CourseCard";
 
@@ -149,7 +150,15 @@ export default function Dashboard() {
 
 	return (
 		<div className={styles.container}>
-			<h1 className={styles.title}>Dashboard - Selección de Cursos</h1>
+			<div className={styles.header}>
+				<h1 className={styles.title}>Dashboard - Selección de Cursos</h1>
+				<button
+					onClick={() => signOut({ callbackUrl: "/" })}
+					className={styles.logoutButton}
+				>
+					Cerrar Sesión
+				</button>
+			</div>
 			<div className={styles.paralelos}>
 				{paralelos.map((paralelo) => (
 					<div key={paralelo.id} className={styles.paralelo}>

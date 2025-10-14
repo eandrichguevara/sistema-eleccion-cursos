@@ -3,12 +3,28 @@
 	padding: 1rem;
 	border-radius: 6px;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-	transition: transform 0.2s, box-shadow 0.2s;
+	transition: transform 0.2s, box-shadow 0.2s, border 0.2s;
+	border: 2px solid transparent;
 }
 
 .card:hover {
 	transform: translateY(-2px);
 	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.card.selected {
+	border-color: #0070f3;
+	background-color: #f0f7ff;
+}
+
+.card.firstChoice {
+	border-color: #f0b800;
+	background-color: #fffbea;
+	box-shadow: 0 4px 12px rgba(240, 184, 0, 0.3);
+}
+
+.card.firstChoice:hover {
+	box-shadow: 0 6px 16px rgba(240, 184, 0, 0.4);
 }
 
 .cursoNombre {
@@ -20,40 +36,72 @@
 
 .preferencias {
 	display: flex;
-	align-items: center;
-	justify-content: space-between;
+	flex-direction: column;
+	gap: 0.5rem;
 	margin-top: 0.75rem;
 	padding-top: 0.75rem;
 	border-top: 1px solid #e0e0e0;
 }
 
-.label {
-	font-size: 0.875rem;
-	color: #666;
-}
-
-.buttons {
+.selectedInfo {
 	display: flex;
-	gap: 0.5rem;
+	justify-content: space-between;
+	align-items: center;
 }
 
-.preferenciaButton {
-	width: 32px;
-	height: 32px;
-	border: 2px solid #0070f3;
-	background-color: white;
-	color: #0070f3;
-	border-radius: 4px;
+.preferenceLabel {
+	font-size: 0.875rem;
 	font-weight: bold;
-	cursor: pointer;
-	transition: background-color 0.2s, color 0.2s;
+	color: #0070f3;
+	background-color: white;
+	padding: 0.25rem 0.75rem;
+	border-radius: 12px;
+	border: 2px solid #0070f3;
 }
 
-.preferenciaButton:hover {
+.firstPreferenceLabel {
+	color: black;
+	border-color: #f0b800;
+	background-color: #fff;
+	padding: 0.2rem 0.55rem;
+	box-shadow: 0 2px 4px rgba(240, 184, 0, 0.2);
+}
+
+.selectButton {
+	width: 100%;
+	padding: 0.5rem;
 	background-color: #0070f3;
 	color: white;
+	border: none;
+	border-radius: 4px;
+	font-size: 0.875rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background-color 0.2s;
 }
 
-.preferenciaButton:active {
-	transform: scale(0.95);
+.selectButton:hover:not(:disabled) {
+	background-color: #0051cc;
+}
+
+.selectButton:disabled {
+	background-color: #ccc;
+	color: #666;
+	cursor: not-allowed;
+}
+
+.removeButton {
+	padding: 0.25rem 0.75rem;
+	background-color: #dc3545;
+	color: white;
+	border: none;
+	border-radius: 4px;
+	font-size: 0.75rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background-color 0.2s;
+}
+
+.removeButton:hover {
+	background-color: #c82333;
 }

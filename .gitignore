@@ -1,56 +1,41 @@
-# Node
-node_modules/
-/npm-debug.log*
-/yarn-debug.log*
-/yarn-error.log*
-pnpm-lock.yaml
-package-lock.json
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Next.js
-.next/
-out/
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# Production
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
 /build
-/dist
 
-# Local env files
-.env
-.env.local
-.env.*.local
-
-# Misc
+# misc
 .DS_Store
-.vscode/
-.idea/
+*.pem
 
-# Mac
-*.DS_Store
-
-# Logs
-logs
-*.log
+# debug
 npm-debug.log*
 yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
-# Coverage
-coverage/
+# env files (can opt-in for committing if needed)
+.env*
 
-# Optional npm cache directory
-.npm
+# vercel
+.vercel
 
-# Parcel-bundler cache
-.cache
-
-# TypeScript
+# typescript
 *.tsbuildinfo
-
-# Optional eslint cache
-.eslintcache
-
-# OS
-Thumbs.db
-
-# JetBrains
-.idea/
-*.iml
+next-env.d.ts

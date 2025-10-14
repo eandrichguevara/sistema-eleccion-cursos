@@ -1,0 +1,59 @@
+.card {
+	background-color: white;
+	padding: 1rem;
+	border-radius: 6px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.cursoNombre {
+	font-size: 1rem;
+	color: #333;
+	margin: 0 0 1rem 0;
+	font-weight: 600;
+}
+
+.preferencias {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 0.75rem;
+	padding-top: 0.75rem;
+	border-top: 1px solid #e0e0e0;
+}
+
+.label {
+	font-size: 0.875rem;
+	color: #666;
+}
+
+.buttons {
+	display: flex;
+	gap: 0.5rem;
+}
+
+.preferenciaButton {
+	width: 32px;
+	height: 32px;
+	border: 2px solid #0070f3;
+	background-color: white;
+	color: #0070f3;
+	border-radius: 4px;
+	font-weight: bold;
+	cursor: pointer;
+	transition: background-color 0.2s, color 0.2s;
+}
+
+.preferenciaButton:hover {
+	background-color: #0070f3;
+	color: white;
+}
+
+.preferenciaButton:active {
+	transform: scale(0.95);
+}

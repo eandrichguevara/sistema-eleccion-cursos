@@ -1,0 +1,46 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Student {
+  id                  String      @id @default(uuid()) @db.Uuid
+  email               String      @unique
+  password            String
+  level               Int
+  is_neurodivergent   Boolean
+  previous_electives  String[]
+  selections          Selection[]
+
+  @@map("students")
+}
+
+model Course {
+  id         String      @id @default(uuid()) @db.Uuid
+  name       String
+  parallel   Int
+  capacity   Int         @default(42)
+  selections Selection[]
+
+  @@map("courses")
+}
+
+model Selection {
+  id               String  @id @default(uuid()) @db.Uuid
+  student_id       String  @db.Uuid
+  course_id        String  @db.Uuid
+  preference_order Int
+
+  student Student @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  course  Course  @relation(fields: [course_id], references: [id], onDelete: Cascade)
+
+  @@map("selections")
+}
+

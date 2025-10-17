@@ -1,56 +1,136 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import styles from "./Dashboard.module.css";
 import CourseCard from "@/components/CourseCard";
 
 type Selection = {
-	courseId: number;
+	courseId: string; // UUID
 	courseName: string;
 	parallelId: number;
 	preference: number;
 };
 
+type ApiSelection = {
+	course_id: string;
+	preference_order: number;
+	course: {
+		name: string;
+		parallel: number;
+	};
+};
+
 export default function Dashboard() {
 	const [selections, setSelections] = useState<Selection[]>([]);
+	const [isLoading, setIsLoading] = useState(false);
+	const [isContentLoaded, setIsContentLoaded] = useState(false);
 
-	// Datos de ejemplo hardcodeados
+	// Datos de ejemplo hardcodeados con IDs UUID de la base de datos
 	const paralelos = [
 		{
 			id: 1,
 			nombre: "Paralelo 1",
 			cursos: [
-				{ id: 1, nombre: "Matemáticas Avanzadas" },
-				{ id: 2, nombre: "Física Cuántica" },
-				{ id: 3, nombre: "Química Orgánica" },
-				{ id: 4, nombre: "Programación I" },
+				{
+					id: "e4918312-919b-4e4b-a18d-ba4a01a26822",
+					nombre: "Matemáticas Avanzadas",
+				},
+				{
+					id: "79142fe9-a91f-4a06-8342-24aef66cdbfe",
+					nombre: "Física Cuántica",
+				},
+				{
+					id: "e98b982b-63d5-4358-8697-58d7c7d0ddaa",
+					nombre: "Química Orgánica",
+				},
+				{
+					id: "d493ef1f-a176-4b19-9c66-52302b33797d",
+					nombre: "Programación I",
+				},
 			],
 		},
 		{
 			id: 2,
 			nombre: "Paralelo 2",
 			cursos: [
-				{ id: 5, nombre: "Literatura Contemporánea" },
-				{ id: 6, nombre: "Historia Universal" },
-				{ id: 7, nombre: "Biología Molecular" },
-				{ id: 8, nombre: "Inglés Avanzado" },
+				{
+					id: "91ed4c4a-48c8-427f-9b25-086b0624c0bd",
+					nombre: "Literatura Contemporánea",
+				},
+				{
+					id: "75256b5e-cec6-4d07-9cc9-263da6590325",
+					nombre: "Historia Universal",
+				},
+				{
+					id: "afa61754-2b9e-431c-b714-7378f61d7b21",
+					nombre: "Biología Molecular",
+				},
+				{
+					id: "ece30772-f050-4f94-a293-ca7a3d0492ef",
+					nombre: "Inglés Avanzado",
+				},
 			],
 		},
 		{
 			id: 3,
 			nombre: "Paralelo 3",
 			cursos: [
-				{ id: 9, nombre: "Economía Global" },
-				{ id: 10, nombre: "Estadística Aplicada" },
-				{ id: 11, nombre: "Diseño Digital" },
-				{ id: 12, nombre: "Bases de Datos" },
+				{
+					id: "5a9075ff-c92f-488d-a231-a1c85b1f8dae",
+					nombre: "Economía Global",
+				},
+				{
+					id: "78e3e9b5-f3f7-4560-8121-1c70cc1d0a59",
+					nombre: "Estadística Aplicada",
+				},
+				{
+					id: "dd474111-8e97-4d5b-b7d5-5c4b272ff0cc",
+					nombre: "Diseño Digital",
+				},
+				{
+					id: "7a9abf9d-38a0-429a-ad98-e30ca093a6b1",
+					nombre: "Bases de Datos",
+				},
 			],
 		},
 	];
 
+	// Cargar selecciones previas al montar el componente
+	useEffect(() => {
+		const loadSelections = async () => {
+			try {
+				const response = await fetch("/api/selections");
+				if (response.ok) {
+					const data = await response.json();
+					// Mapear las selecciones de la API al formato del estado local
+					if (data.selections && data.selections.length > 0) {
+						const loadedSelections: Selection[] = data.selections.map(
+							(sel: ApiSelection) => ({
+								courseId: sel.course_id, // Ya es un UUID string
+								courseName: sel.course.name,
+								parallelId: sel.course.parallel,
+								preference: sel.preference_order,
+							})
+						);
+						setSelections(loadedSelections);
+					}
+				}
+			} catch (error) {
+				console.error("Error al cargar selecciones:", error);
+			}
+		};
+
+		// Primero cargar las selecciones
+		loadSelections().then(() => {
+			// Después de cargar, esperar un momento y activar la transición
+			setTimeout(() => {
+				setIsContentLoaded(true);
+			}, 1500); // Espera 1.5 segundos para mostrar el título
+		});
+	}, []);
 	const handleSelectCourse = (
-		courseId: number,
+		courseId: string,
 		courseName: string,
 		parallelId: number,
 		preference: number
@@ -86,7 +166,7 @@ export default function Dashboard() {
 		}
 	};
 
-	const getCoursePreference = (courseId: number): number => {
+	const getCoursePreference = (courseId: string): number => {
 		const selection = selections.find((s) => s.courseId === courseId);
 		return selection ? selection.preference : 0;
 	};
@@ -119,23 +199,8 @@ export default function Dashboard() {
 		});
 	};
 
-	const handleSubmit = () => {
-		if (hasAllParallelSelections()) {
-			console.log("Selecciones:", selections);
-
-			// Agrupar por paralelo para mostrar
-			let message = "Selección enviada correctamente!\n\n";
-			paralelos.forEach((paralelo) => {
-				const paraleloSelections = getSelectionsForParallel(paralelo.id);
-				message += `${paralelo.nombre}:\n`;
-				paraleloSelections.forEach((s) => {
-					message += `  ${s.preference}. ${s.courseName}\n`;
-				});
-				message += "\n";
-			});
-
-			alert(message);
-		} else {
+	const handleSubmit = async () => {
+		if (!hasAllParallelSelections()) {
 			let message = `Debes seleccionar al menos 1 curso por cada paralelo.\n\n`;
 			paralelos.forEach((paralelo) => {
 				const count = getSelectionsForParallel(paralelo.id).length;
@@ -145,11 +210,60 @@ export default function Dashboard() {
 				}\n`;
 			});
 			alert(message);
+			return;
+		}
+
+		setIsLoading(true);
+		try {
+			const response = await fetch("/api/selections", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					selections: selections.map((s) => ({
+						courseId: s.courseId, // Ya es string UUID
+						preference: s.preference,
+					})),
+				}),
+			});
+
+			if (response.ok) {
+				let message = "Selección guardada correctamente!\n\n";
+				paralelos.forEach((paralelo) => {
+					const paraleloSelections = getSelectionsForParallel(paralelo.id);
+					message += `${paralelo.nombre}:\n`;
+					paraleloSelections.forEach((s) => {
+						message += `  ${s.preference}. ${s.courseName}\n`;
+					});
+					message += "\n";
+				});
+				alert(message);
+			} else {
+				const error = await response.json();
+				alert(`Error al guardar: ${error.error || "Error desconocido"}`);
+			}
+		} catch (error) {
+			console.error("Error:", error);
+			alert("Error al conectar con el servidor");
+		} finally {
+			setIsLoading(false);
 		}
 	};
 
 	return (
-		<div className={styles.container}>
+		<div
+			className={`${styles.container} ${isContentLoaded ? styles.loaded : ""}`}
+		>
+			{/* Loading Overlay */}
+			<div
+				className={`${styles.loadingOverlay} ${
+					isContentLoaded ? styles.hidden : ""
+				}`}
+			>
+				<div className={styles.spinner}></div>
+				<div className={styles.loadingText}>Cargando cursos...</div>
+			</div>
 			<div className={styles.header}>
 				<h1 className={styles.title}>Dashboard - Selección de Cursos</h1>
 				<button
@@ -159,7 +273,11 @@ export default function Dashboard() {
 					Cerrar Sesión
 				</button>
 			</div>
-			<div className={styles.paralelos}>
+			<div
+				className={`${styles.paralelos} ${
+					isContentLoaded ? styles.visible : ""
+				}`}
+			>
 				{paralelos.map((paralelo) => (
 					<div key={paralelo.id} className={styles.paralelo}>
 						<h2 className={styles.paraleloTitle}>
@@ -188,7 +306,11 @@ export default function Dashboard() {
 				))}
 			</div>
 			{selections.length > 0 && (
-				<div className={styles.selectionSummary}>
+				<div
+					className={`${styles.selectionSummary} ${
+						isContentLoaded ? styles.visible : ""
+					}`}
+				>
 					<h3>Tus selecciones:</h3>
 					<div className={styles.summaryGrid}>
 						{paralelos.map((paralelo) => {
@@ -222,11 +344,17 @@ export default function Dashboard() {
 				</div>
 			)}{" "}
 			<button
-				className={styles.submitButton}
+				className={`${styles.submitButton} ${
+					isContentLoaded ? styles.visible : ""
+				}`}
 				onClick={handleSubmit}
-				disabled={!hasAllParallelSelections()}
+				disabled={!hasAllParallelSelections() || isLoading}
 			>
-				Enviar Selección {selections.length > 0 && `(${selections.length})`}
+				{isLoading
+					? "Guardando..."
+					: `Enviar Selección${
+							selections.length > 0 ? ` (${selections.length})` : ""
+					  }`}
 			</button>
 		</div>
 	);

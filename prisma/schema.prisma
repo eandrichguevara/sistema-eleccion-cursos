@@ -11,23 +11,26 @@ datasource db {
 }
 
 model Student {
-  id                  String      @id @default(uuid()) @db.Uuid
-  email               String      @unique
+  id                  String       @id @default(uuid()) @db.Uuid
+  email               String       @unique
   password            String
   level               Int
   is_neurodivergent   Boolean
   previous_electives  String[]
+  role                String       @default("student") // "student" or "admin"
   selections          Selection[]
+  assignments         Assignment[]
 
   @@map("students")
 }
 
 model Course {
-  id         String      @id @default(uuid()) @db.Uuid
-  name       String
-  parallel   Int
-  capacity   Int         @default(42)
-  selections Selection[]
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String
+  parallel    Int
+  capacity    Int          @default(42)
+  selections  Selection[]
+  assignments Assignment[]
 
   @@map("courses")
 }
@@ -42,5 +45,47 @@ model Selection {
   course  Course  @relation(fields: [course_id], references: [id], onDelete: Cascade)
 
   @@map("selections")
+}
+
+model Assignment {
+  id                String   @id @default(uuid()) @db.Uuid
+  student_id        String   @db.Uuid
+  course_id         String   @db.Uuid
+  assigned_at       DateTime @default(now())
+  is_priority       Boolean  @default(false)
+  preference_order  Int
+
+  student Student @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  course  Course  @relation(fields: [course_id], references: [id], onDelete: Cascade)
+
+  @@unique([student_id, course_id])
+  @@map("assignments")
+}
+
+model Lottery {
+  id              String         @id @default(uuid()) @db.Uuid
+  course_id       String         @db.Uuid
+  course_name     String
+  parallel        Int
+  preference      Int
+  candidates      Int            // Total de estudiantes que querían este curso
+  available_spots Int            // Cupos disponibles
+  executed_at     DateTime       @default(now())
+  
+  lottery_results LotteryResult[]
+
+  @@map("lotteries")
+}
+
+model LotteryResult {
+  id          String   @id @default(uuid()) @db.Uuid
+  lottery_id  String   @db.Uuid
+  student_id  String   @db.Uuid
+  student_email String
+  won         Boolean  // true = ganó el sorteo, false = perdió
+  
+  lottery     Lottery  @relation(fields: [lottery_id], references: [id], onDelete: Cascade)
+
+  @@map("lottery_results")
 }
 

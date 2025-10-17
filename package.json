@@ -7,7 +7,9 @@
 		"build": "next build --turbopack",
 		"start": "next start",
 		"lint": "eslint",
-		"db:seed": "tsx scripts/seed.ts",
+		"db:seed": "tsx prisma/seed.ts",
+		"db:test-assignment": "tsx src/lib/assignment-test.ts",
+		"db:view-lotteries": "tsx src/lib/view-lotteries.ts",
 		"db:studio": "prisma studio"
 	},
 	"dependencies": {

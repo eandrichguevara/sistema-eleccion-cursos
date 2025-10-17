@@ -1,13 +1,13 @@
 import styles from "./CourseCard.module.css";
 
 interface CourseCardProps {
-	id: number;
+	id: string;
 	nombre: string;
 	parallelId: number;
 	currentPreference: number;
 	nextAvailablePreference: number;
 	onSelect: (
-		courseId: number,
+		courseId: string,
 		courseName: string,
 		parallelId: number,
 		preference: number

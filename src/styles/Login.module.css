@@ -25,6 +25,16 @@
 	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
+.error {
+	background-color: #fee;
+	color: #c33;
+	padding: 0.75rem;
+	border-radius: 4px;
+	margin-bottom: 1rem;
+	font-size: 0.9rem;
+	border: 1px solid #fcc;
+}
+
 .input {
 	margin-bottom: 1rem;
 	padding: 0.75rem;
@@ -39,6 +49,11 @@
 	box-shadow: 0 0 0 2px rgba(0, 112, 243, 0.2);
 }
 
+.input:disabled {
+	background-color: #f5f5f5;
+	cursor: not-allowed;
+}
+
 .button {
 	padding: 0.75rem;
 	background-color: #0070f3;
@@ -50,6 +65,11 @@
 	transition: background-color 0.2s;
 }
 
-.button:hover {
+.button:hover:not(:disabled) {
 	background-color: #0051cc;
+}
+
+.button:disabled {
+	background-color: #ccc;
+	cursor: not-allowed;
 }

@@ -220,6 +220,27 @@ async function main() {
 		},
 	});
 
+	// Crear o actualizar usuario admin
+	console.log("\n👤 Creando/actualizando usuario administrador...");
+	const adminPassword = await bcrypt.hash("admin123", 10);
+
+	await prisma.students.upsert({
+		where: { email: "admin@institucion.edu" },
+		update: {
+			password: adminPassword,
+			role: "admin",
+		},
+		create: {
+			email: "admin@institucion.edu",
+			password: adminPassword,
+			level: 4,
+			is_neurodivergent: false,
+			previous_electives: [],
+			role: "admin",
+		},
+	});
+	console.log("   ✓ Usuario admin configurado correctamente");
+
 	// 1. Crear cursos (12 cursos, 4 por paralelo)
 	console.log("\n📚 Creando 12 cursos...");
 	const courses = [];

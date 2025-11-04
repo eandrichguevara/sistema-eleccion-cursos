@@ -19,15 +19,15 @@ async function persistCheckpoint(
 ) {
 	if (!assignmentRunId) return;
 	try {
-		const existing = await (prisma as any).assignment_runs.findUnique({
+		const existing = await prisma.assignment_runs.findUnique({
 			where: { id: assignmentRunId },
 		});
-		const prevMeta = existing?.metadata ?? {};
+		const prevMeta = (existing?.metadata ?? {}) as Record<string, unknown>;
 		const checkpoints = Array.isArray(prevMeta.checkpoints)
 			? prevMeta.checkpoints
 			: [];
 		checkpoints.push({ phase, timestamp: new Date().toISOString(), payload });
-		await (prisma as any).assignment_runs.update({
+		await prisma.assignment_runs.update({
 			where: { id: assignmentRunId },
 			data: { metadata: { ...prevMeta, checkpoints } },
 		});
@@ -57,6 +57,34 @@ type Assignment = {
 	course_id: string;
 	preference_order: number;
 	is_priority: boolean;
+};
+
+// Result shape returned by each phase (varies but often includes lotteriesExecuted)
+type PhaseResult = {
+	lotteriesExecuted?: number;
+	[key: string]: unknown;
+};
+
+// Summary object collected during the run and returned to callers.
+type Summary = {
+	neuro_first?: PhaseResult;
+	neuro_fallback?: PhaseResult;
+	third_first?: PhaseResult;
+	third_fallback?: PhaseResult;
+	fourth_first?: PhaseResult;
+	fourth_fallback?: PhaseResult;
+	backup_fill?: PhaseResult;
+	totalAssignments?: number;
+	totalStudents?: number;
+	neurodivergentAssignments?: number;
+	fourthYearAssignments?: number;
+	thirdYearAssignments?: number;
+	lotteriesExecuted?: number;
+	studentsFullyAssigned?: number;
+	studentsPartiallyAssigned?: number;
+	integrity?: string;
+	problemsCount?: number;
+	[key: string]: unknown;
 };
 
 /**
@@ -102,11 +130,11 @@ export async function executeAssignmentAlgorithm(options: {
 	if (assignmentRunId) {
 		try {
 			// Read existing metadata then set started_at (merge) to avoid losing other metadata
-			const existing = await (prisma as any).assignment_runs.findUnique({
+			const existing = await prisma.assignment_runs.findUnique({
 				where: { id: assignmentRunId },
 			});
-			const prevMeta = existing?.metadata ?? {};
-			await (prisma as any).assignment_runs.update({
+			const prevMeta = (existing?.metadata ?? {}) as Record<string, unknown>;
+			await prisma.assignment_runs.update({
 				where: { id: assignmentRunId },
 				data: {
 					metadata: {
@@ -141,7 +169,9 @@ export async function executeAssignmentAlgorithm(options: {
 				const studentAssignments = new Map<string, Set<number>>();
 				const allAssignments: Assignment[] = [];
 
-				const summary: Record<string, unknown> = {};
+				// summary collects intermediate phase results and final stats.
+				// Use an explicit Summary type to avoid `any` and keep typings strict.
+				const summary: Partial<Summary> = {};
 
 				// 1) Neurodivergent first preferences
 				const neuro = students.filter((s) => s.is_neurodivergent);
@@ -254,7 +284,7 @@ export async function executeAssignmentAlgorithm(options: {
 				});
 
 				if (allAssignments.length > 0) {
-					await (tx as any).assignments.createMany({
+					await tx.assignments.createMany({
 						data: allAssignments.map((a) => ({
 							student_id: a.student_id,
 							course_id: a.course_id,
@@ -367,15 +397,15 @@ export async function executeAssignmentAlgorithm(options: {
 		const durationSeconds = Math.round((endMs - startMs) / 1000);
 		if (assignmentRunId) {
 			try {
-				const existing = await (prisma as any).assignment_runs.findUnique({
+				const existing = await prisma.assignment_runs.findUnique({
 					where: { id: assignmentRunId },
 				});
-				const prevMeta = existing?.metadata ?? {};
+				const prevMeta = (existing?.metadata ?? {}) as Record<string, unknown>;
 				const status =
 					Array.isArray(result?.problems) && result.problems.length > 0
 						? "completed_with_issues"
 						: "completed";
-				await (prisma as any).assignment_runs.update({
+				await prisma.assignment_runs.update({
 					where: { id: assignmentRunId },
 					data: {
 						metadata: {
@@ -404,7 +434,7 @@ export async function executeAssignmentAlgorithm(options: {
 				await saveAssignmentReportToAudit({
 					assignmentRunId,
 					reportText,
-					prismaClient: prisma as any,
+					prismaClient: prisma,
 					requestIp,
 					userAgent,
 				});
@@ -431,7 +461,7 @@ export async function executeAssignmentAlgorithm(options: {
 			// write a failure summary log outside the transaction so it persists
 			// even though the tx rolled back. Use any-cast because generated
 			// client might be out-of-date until migrations are applied.
-			await (prisma as any).assignment_logs.create({
+			await prisma.assignment_logs.create({
 				data: {
 					assignment_run_id: assignmentRunId ?? undefined,
 					event_type: "assignment_run_failed",
@@ -453,11 +483,14 @@ export async function executeAssignmentAlgorithm(options: {
 				if (assignmentRunId) {
 					const endMs = Date.now();
 					const durationSeconds = Math.round((endMs - startMs) / 1000);
-					const existing = await (prisma as any).assignment_runs.findUnique({
+					const existing = await prisma.assignment_runs.findUnique({
 						where: { id: assignmentRunId },
 					});
-					const prevMeta = existing?.metadata ?? {};
-					await (prisma as any).assignment_runs.update({
+					const prevMeta = (existing?.metadata ?? {}) as Record<
+						string,
+						unknown
+					>;
+					await prisma.assignment_runs.update({
 						where: { id: assignmentRunId },
 						data: {
 							metadata: {

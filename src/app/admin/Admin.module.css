@@ -313,3 +313,35 @@
 		font-size: 0.9rem;
 	}
 }
+
+/* Checkbox accent color for selected paralelos (green) */
+.greenCheckbox {
+	/* Visual checkbox implemented with a span + SVG for consistent cross-browser rendering */
+	width: 22px;
+	height: 22px;
+	border-radius: 5px;
+	border: 2px solid #28a745;
+	background: white;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	vertical-align: middle;
+}
+
+.greenCheckbox.checked {
+	background: #28a745;
+	border-color: #28a745;
+}
+
+/* ensure the svg scales nicely */
+.greenCheckbox svg {
+	width: 12px;
+	height: 12px;
+	display: block;
+}
+
+/* Keep appearance when 'disabled' - we render as visual-only so opacity stays 1 */
+.greenCheckbox[aria-disabled="true"] {
+	opacity: 1;
+}

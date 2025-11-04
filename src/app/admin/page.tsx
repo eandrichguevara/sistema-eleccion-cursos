@@ -29,6 +29,14 @@ interface SelectionStats {
 	studentsMissingAny: number;
 }
 
+interface MissingStudent {
+	id: string;
+	email: string | null;
+	level?: number | null;
+	selected_parallels: number;
+	parallels?: number[] | null;
+}
+
 export default function AdminPage() {
 	const [isExporting, setIsExporting] = useState(false);
 	const [isAssigning, setIsAssigning] = useState(false);
@@ -41,6 +49,11 @@ export default function AdminPage() {
 	const [selectionStats, setSelectionStats] = useState<SelectionStats | null>(
 		null
 	);
+	const [missingStudents, setMissingStudents] = useState<
+		MissingStudent[] | null
+	>(null);
+	const [loadingMissing, setLoadingMissing] = useState(false);
+	const [showMissingModal, setShowMissingModal] = useState(false);
 	const router = useRouter();
 	const { data: session, status } = useSession();
 
@@ -79,6 +92,27 @@ export default function AdminPage() {
 			mounted = false;
 		};
 	}, []);
+
+	const fetchMissingStudents = async () => {
+		try {
+			setLoadingMissing(true);
+			setMissingStudents(null);
+			const res = await fetch("/api/admin/students/missing");
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				throw new Error(err?.error || "Error al obtener lista de alumnos");
+			}
+			const data = await res.json();
+			setMissingStudents(data.students || []);
+			setShowMissingModal(true);
+		} catch (e) {
+			console.error("Error fetching missing students:", e);
+			setMissingStudents([]);
+			setShowMissingModal(true);
+		} finally {
+			setLoadingMissing(false);
+		}
+	};
 
 	const handleExportCSV = async () => {
 		try {
@@ -267,10 +301,26 @@ export default function AdminPage() {
 						</div>
 						<div className={styles.info} style={{ marginTop: "1rem" }}>
 							<p style={{ fontSize: "0.85rem", margin: 0, color: "#666" }}>
-								ℹ️ Solo los estudiantes que completaron sus 3 preferencias
-								participan en la asignación automática.
+								ℹ️ Los estudiantes que no completaron sus preferencias serán
+								asignados a los cursos que tengan cupos disponibles al final de
+								las asignaciones.
 							</p>
 						</div>
+
+						{/* Botón para ver la lista de alumnos que aún faltan elegir algún paralelo */}
+						{selectionStats.studentsMissingAny > 0 && (
+							<div style={{ marginTop: "1rem" }}>
+								<button
+									onClick={fetchMissingStudents}
+									disabled={loadingMissing}
+									className={styles.button + " " + styles.buttonOutline}
+								>
+									{loadingMissing
+										? "⏳ Cargando..."
+										: "👀 Ver alumnos sin preferencias"}
+								</button>
+							</div>
+						)}
 					</div>
 				)}{" "}
 				{assignmentStats && (
@@ -444,6 +494,148 @@ export default function AdminPage() {
 							</button>
 						</div>
 						<AssignmentReportViewer initialRunId={lastRunId} />
+					</div>
+				)}
+				{showMissingModal && (
+					// Modal simple para mostrar lista de estudiantes
+					<div
+						style={{
+							position: "fixed",
+							top: 0,
+							left: 0,
+							right: 0,
+							bottom: 0,
+							backgroundColor: "rgba(0,0,0,0.5)",
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "center",
+							zIndex: 9999,
+						}}
+						onClick={() => setShowMissingModal(false)}
+					>
+						<div
+							onClick={(e) => e.stopPropagation()}
+							style={{
+								background: "#fff",
+								padding: "1.25rem",
+								borderRadius: 8,
+								maxWidth: "800px",
+								width: "90%",
+								maxHeight: "80%",
+								overflow: "auto",
+							}}
+						>
+							<div
+								style={{
+									display: "flex",
+									justifyContent: "space-between",
+									alignItems: "center",
+									marginBottom: "0.5rem",
+								}}
+							>
+								<h3 style={{ margin: 0 }}>
+									📋 Alumnos sin todas las preferencias
+								</h3>
+								<button
+									className={styles.button + " " + styles.buttonOutline}
+									onClick={() => setShowMissingModal(false)}
+								>
+									✖️ Cerrar
+								</button>
+							</div>
+							{missingStudents && missingStudents.length > 0 ? (
+								<table style={{ width: "100%", borderCollapse: "collapse" }}>
+									<thead>
+										<tr
+											style={{
+												textAlign: "left",
+												borderBottom: "1px solid #eee",
+											}}
+										>
+											<th style={{ padding: "0.5rem" }}>Email</th>
+											<th style={{ padding: "0.5rem" }}>Nivel</th>
+											<th style={{ padding: "0.5rem" }}>
+												Paralelos seleccionados
+											</th>
+										</tr>
+									</thead>
+									<tbody>
+										{missingStudents.map((s) => (
+											<tr
+												key={s.id}
+												style={{ borderBottom: "1px solid #f5f5f5" }}
+											>
+												<td style={{ padding: "0.5rem" }}>{s.email}</td>
+												<td style={{ padding: "0.5rem" }}>{s.level ?? "-"}</td>
+												<td
+													style={{
+														padding: "0.5rem",
+														display: "flex",
+														gap: "0.5rem",
+													}}
+												>
+													{[1, 2, 3].map((p) => {
+														const isChecked =
+															Array.isArray(s.parallels) &&
+															s.parallels.includes(p);
+														return (
+															<label
+																key={p}
+																style={{
+																	display: "flex",
+																	alignItems: "center",
+																	gap: "0.5rem",
+																	cursor: "default",
+																}}
+															>
+																<span
+																	role="img"
+																	aria-hidden={!isChecked}
+																	className={
+																		isChecked
+																			? `${styles.greenCheckbox} ${styles.checked}`
+																			: styles.greenCheckbox
+																	}
+																	aria-label={
+																		isChecked
+																			? `Paralelo ${p} seleccionado`
+																			: `Paralelo ${p} no seleccionado`
+																	}
+																>
+																	{isChecked && (
+																		<svg
+																			viewBox="0 0 24 24"
+																			xmlns="http://www.w3.org/2000/svg"
+																			aria-hidden="true"
+																			focusable="false"
+																		>
+																			<path
+																				fill="none"
+																				stroke="#fff"
+																				strokeWidth="2.5"
+																				strokeLinecap="round"
+																				strokeLinejoin="round"
+																				d="M5 13l4 4L19 7"
+																			/>
+																		</svg>
+																	)}
+																</span>
+																<span style={{ fontSize: "0.95rem" }}>{p}</span>
+															</label>
+														);
+													})}
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							) : (
+								<p>
+									No se encontraron alumnos (o hubo un error al obtener la
+									lista).
+								</p>
+							)}
+						</div>
 					</div>
 				)}
 				<div className={styles.section}>

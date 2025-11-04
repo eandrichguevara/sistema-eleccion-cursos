@@ -315,11 +315,39 @@ async function main() {
 	);
 	let totalSelections = 0;
 
+	// Queremos simular estudiantes en distintos estados:
+	// - Algunos sin ninguna preferencia
+	// - Algunos con preferencias parciales (1 o 2 paralelos)
+	// - La mayoría con las 3 preferencias
+	// counters are not needed here because we compute accurate values from DB below
+
 	for (let i = 0; i < students.length; i++) {
 		const student = students[i];
-		const selections = generateSelections(courses, i);
 
-		for (const selection of selections) {
+		// Probabilidades (ajustables):
+		// 10% -> sin selecciones
+		// 15% -> parciales (1 o 2 paralelos)
+		// 75% -> completos (3 paralelos)
+		const rnd = Math.random();
+		let selectionsToCreate: Array<{
+			course_id: string;
+			preference_order: number;
+		}> = [];
+
+		if (rnd < 0.1) {
+			// Ninguna selección
+			selectionsToCreate = [];
+		} else if (rnd < 0.25) {
+			// Parciales: tomar 1 o 2 preferencias aleatorias
+			const full = generateSelections(courses, i);
+			const take = Math.random() < 0.6 ? 2 : 1; // 60% de parciales tendrán 2, 40% tendrán 1
+			selectionsToCreate = full.slice(0, take);
+		} else {
+			// Completas
+			selectionsToCreate = generateSelections(courses, i);
+		}
+
+		for (const selection of selectionsToCreate) {
 			await prisma.selections.create({
 				data: {
 					student_id: student.id,
@@ -332,7 +360,9 @@ async function main() {
 
 		if ((i + 1) % 42 === 0) {
 			console.log(
-				`   ✓ Selecciones generadas para ${i + 1}/168 estudiantes...`
+				`   ✓ Selecciones (parciales/incompletas/ninguna incluidas) generadas para ${
+					i + 1
+				}/168 estudiantes...`
 			);
 		}
 	}
@@ -370,6 +400,36 @@ async function main() {
 	console.log(`   • Total de cursos: ${courses.length} (4 por paralelo)`);
 	console.log(`   • Capacidad total: ${courses.length * 42} cupos`);
 	console.log(`   • Total de selecciones: ${totalSelections}`);
+
+	// Mostrar cuántos estudiantes quedaron sin selecciones y parciales
+	// (leer desde la BD para ser preciso)
+	const studentsNoSelRes: Array<{ count: bigint }> = await prisma.$queryRaw`
+		SELECT COUNT(*)::bigint as count FROM students s
+		LEFT JOIN selections sel ON sel.student_id = s.id
+		WHERE s.role = 'student'
+		GROUP BY s.id
+		HAVING COUNT(sel.*) = 0
+	`;
+	const studentsNoSel = Number(
+		studentsNoSelRes.length ? studentsNoSelRes.length : 0
+	);
+
+	// Parciales: tengan 1 o 2 selecciones
+	const studentsPartialRes: Array<{ count: bigint }> = await prisma.$queryRaw`
+		SELECT COUNT(*)::bigint as count FROM (
+			SELECT s.id, COUNT(sel.*) as cnt
+			FROM students s
+			LEFT JOIN selections sel ON sel.student_id = s.id
+			WHERE s.role = 'student'
+			GROUP BY s.id
+		) t WHERE t.cnt > 0 AND t.cnt < 3
+	`;
+	const studentsPartial = Number(studentsPartialRes[0]?.count ?? 0);
+
+	console.log(`   • Estudiantes sin selecciones: ${studentsNoSel}`);
+	console.log(
+		`   • Estudiantes con selecciones parciales (1 o 2): ${studentsPartial}`
+	);
 
 	// Análisis de demanda por curso
 	console.log("\n📈 Demanda por curso:");

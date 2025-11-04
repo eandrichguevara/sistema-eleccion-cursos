@@ -1,6 +1,5 @@
 import priorityAssignments from "./priority-assignments";
 import {
-	getStudentsWithLessThanThreeFromMap,
 	detectAndRecordAssignmentConflicts,
 	assertFinalAssignmentsIntegrity,
 } from "./assignment-validators";
@@ -186,14 +185,11 @@ export async function executeAssignmentAlgorithm(options: {
 				await persistCheckpoint(assignmentRunId, "third_first", res3);
 
 				// Identify remaining students who still need assignments (less than 3)
-				const needing = getStudentsWithLessThanThreeFromMap(
-					studentAssignments
-				).map((r) => r.studentId);
-
-				// Filter student objects for fallbacks
-				const needyStudents = students.filter((s) => needing.includes(s.id));
-
-				// 4) fallback neurodivergent
+				// This includes students not yet in the map (no selections) AND students with <3 assignments
+				const needyStudents = students.filter((s) => {
+					const assigned = studentAssignments.get(s.id);
+					return !assigned || assigned.size < 3;
+				}); // 4) fallback neurodivergent
 				const needyNeuro = needyStudents.filter((s) => s.is_neurodivergent);
 				const res4 =
 					await priorityAssignments.assignFallbackPreferencesForNeurodivergent(

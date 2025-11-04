@@ -22,6 +22,13 @@ interface AssignmentStats {
 	studentsPartiallyAssigned: number;
 }
 
+interface SelectionStats {
+	totalStudents: number;
+	studentsWithAnySelection: number;
+	studentsCompletePreferences: number;
+	studentsMissingAny: number;
+}
+
 export default function AdminPage() {
 	const [isExporting, setIsExporting] = useState(false);
 	const [isAssigning, setIsAssigning] = useState(false);
@@ -31,6 +38,9 @@ export default function AdminPage() {
 	const [successMessage, setSuccessMessage] = useState<string | null>(null);
 	const [assignmentStats, setAssignmentStats] =
 		useState<AssignmentStats | null>(null);
+	const [selectionStats, setSelectionStats] = useState<SelectionStats | null>(
+		null
+	);
 	const router = useRouter();
 	const { data: session, status } = useSession();
 
@@ -42,6 +52,33 @@ export default function AdminPage() {
 			router.push("/dashboard");
 		}
 	}, [status, session, router]);
+
+	// Fetch selection stats (cuántos ya eligieron preferencias / faltan paralelo)
+	useEffect(() => {
+		let mounted = true;
+		async function fetchSelectionStats() {
+			try {
+				const res = await fetch("/api/admin/students/preferences");
+				if (!res.ok) return;
+				const data = await res.json();
+				if (mounted) {
+					setSelectionStats({
+						totalStudents: data.totalStudents || 0,
+						studentsWithAnySelection: data.studentsWithAnySelection || 0,
+						studentsCompletePreferences: data.studentsCompletePreferences || 0,
+						studentsMissingAny: data.studentsMissingAny || 0,
+					});
+				}
+			} catch (e) {
+				console.error("Error fetching selection stats", e);
+			}
+		}
+
+		fetchSelectionStats();
+		return () => {
+			mounted = false;
+		};
+	}, []);
 
 	const handleExportCSV = async () => {
 		try {
@@ -192,19 +229,60 @@ export default function AdminPage() {
 						❌ {error}
 					</div>
 				)}
-
 				{successMessage && (
 					<div className={styles.alert + " " + styles.alertSuccess}>
 						{successMessage}
 					</div>
 				)}
-
-				{assignmentStats && (
+				{selectionStats && (
 					<div className={styles.statsCard}>
-						<h3 className={styles.statsTitle}>📊 Estadísticas de Asignación</h3>
+						<h3 className={styles.statsTitle}>
+							📥 Estado de Preferencias (Todos los Estudiantes)
+						</h3>
 						<div className={styles.statsGrid}>
 							<div className={styles.statItem}>
-								<span className={styles.statLabel}>Total de estudiantes:</span>
+								<span className={styles.statLabel}>
+									Total de estudiantes registrados
+								</span>
+								<span className={styles.statValue}>
+									{selectionStats.totalStudents}
+								</span>
+							</div>
+							<div className={styles.statItem}>
+								<span className={styles.statLabel}>
+									Ya eligieron preferencias (3 paralelos)
+								</span>
+								<span className={styles.statValue}>
+									{selectionStats.studentsCompletePreferences}
+								</span>
+							</div>
+							<div className={styles.statItem}>
+								<span className={styles.statLabel}>
+									Aún falta elegir algún paralelo
+								</span>
+								<span className={styles.statValue}>
+									{selectionStats.studentsMissingAny}
+								</span>
+							</div>
+						</div>
+						<div className={styles.info} style={{ marginTop: "1rem" }}>
+							<p style={{ fontSize: "0.85rem", margin: 0, color: "#666" }}>
+								ℹ️ Solo los estudiantes que completaron sus 3 preferencias
+								participan en la asignación automática.
+							</p>
+						</div>
+					</div>
+				)}{" "}
+				{assignmentStats && (
+					<div className={styles.statsCard}>
+						<h3 className={styles.statsTitle}>
+							📊 Estadísticas de Asignación (Última Ejecución)
+						</h3>
+						<div className={styles.statsGrid}>
+							<div className={styles.statItem}>
+								<span className={styles.statLabel}>
+									Estudiantes procesados:
+								</span>
 								<span className={styles.statValue}>
 									{assignmentStats.totalStudents}
 								</span>
@@ -216,21 +294,27 @@ export default function AdminPage() {
 								</span>
 							</div>
 							<div className={styles.statItem}>
-								<span className={styles.statLabel}>Neurodivergentes:</span>
+								<span className={styles.statLabel}>
+									Asignaciones neurodivergentes:
+								</span>
 								<span className={styles.statValue}>
-									{assignmentStats.neurodivergentAssignments} cursos
+									{assignmentStats.neurodivergentAssignments}
 								</span>
 							</div>
 							<div className={styles.statItem}>
-								<span className={styles.statLabel}>4to medio:</span>
+								<span className={styles.statLabel}>
+									Asignaciones 4to medio:
+								</span>
 								<span className={styles.statValue}>
-									{assignmentStats.fourthYearAssignments} cursos
+									{assignmentStats.fourthYearAssignments}
 								</span>
 							</div>
 							<div className={styles.statItem}>
-								<span className={styles.statLabel}>3ro medio:</span>
+								<span className={styles.statLabel}>
+									Asignaciones 3ro medio:
+								</span>
 								<span className={styles.statValue}>
-									{assignmentStats.thirdYearAssignments} cursos
+									{assignmentStats.thirdYearAssignments}
 								</span>
 							</div>
 							<div className={styles.statItem}>
@@ -265,7 +349,6 @@ export default function AdminPage() {
 						</div>
 					</div>
 				)}
-
 				<div className={styles.section}>
 					<h2 className={styles.sectionTitle}>🎯 Asignar Cursos</h2>
 					<p className={styles.sectionDescription}>
@@ -303,7 +386,6 @@ export default function AdminPage() {
 						</button>
 					)}
 				</div>
-
 				<div className={styles.section}>
 					<h2 className={styles.sectionTitle}>📊 Exportar Resultados</h2>
 					<p className={styles.sectionDescription}>
@@ -340,7 +422,6 @@ export default function AdminPage() {
 						</ul>
 					</div>
 				</div>
-
 				{showReport && lastRunId && (
 					<div className={styles.section}>
 						<div
@@ -365,7 +446,6 @@ export default function AdminPage() {
 						<AssignmentReportViewer initialRunId={lastRunId} />
 					</div>
 				)}
-
 				<div className={styles.section}>
 					<button
 						onClick={() => router.push("/dashboard")}

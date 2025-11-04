@@ -135,8 +135,9 @@ export async function POST(request: Request) {
 		runId = run?.id;
 
 		// Load students and courses from DB to pass into the runner (the runner expects structured inputs)
+		// Include students WITH selections AND students WITHOUT selections (for random assignment at the end)
 		const studentsRaw = await prisma.students.findMany({
-			where: { selections: { some: {} } },
+			where: { role: "student" },
 			include: {
 				selections: {
 					include: { courses: true },

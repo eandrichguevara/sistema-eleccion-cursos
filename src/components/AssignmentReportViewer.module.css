@@ -1,0 +1,51 @@
+.container {
+	border: 1px solid #eaeaea;
+	border-radius: 8px;
+	padding: 12px;
+	background: #fff;
+}
+.tabs {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+.tab {
+	padding: 6px 10px;
+	border-radius: 6px;
+	background: #f6f6f6;
+	border: 1px solid #e0e0e0;
+	cursor: pointer;
+}
+.tabActive {
+	background: linear-gradient(90deg, #fdfefe, #eef8ff);
+	border-color: #cbdcff;
+}
+.filters {
+	margin-bottom: 10px;
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+.filterInput {
+	padding: 6px 8px;
+	border-radius: 6px;
+	border: 1px solid #ddd;
+}
+.table {
+	width: 100%;
+	border-collapse: collapse;
+}
+.th,
+.td {
+	text-align: left;
+	padding: 6px 8px;
+	border-bottom: 1px solid #f1f1f1;
+}
+.muted {
+	color: #666;
+	font-size: 13px;
+}
+.empty {
+	padding: 12px;
+	color: #555;
+}

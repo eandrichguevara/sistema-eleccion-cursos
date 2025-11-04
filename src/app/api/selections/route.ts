@@ -50,14 +50,14 @@ export async function POST(request: Request) {
 		}
 
 		// Eliminar selecciones anteriores del usuario (si existen)
-		await prisma.selection.deleteMany({
+		await prisma.selections.deleteMany({
 			where: {
 				student_id: userId,
 			},
 		});
 
 		// Crear las nuevas selecciones
-		const createdSelections = await prisma.selection.createMany({
+		const createdSelections = await prisma.selections.createMany({
 			data: selections.map((selection) => ({
 				student_id: userId,
 				course_id: selection.courseId,
@@ -97,12 +97,12 @@ export async function GET() {
 		const userId = session.user.id;
 
 		// Obtener las selecciones del usuario
-		const selections = await prisma.selection.findMany({
+		const selections = await prisma.selections.findMany({
 			where: {
 				student_id: userId,
 			},
 			include: {
-				course: true,
+				courses: true,
 			},
 			orderBy: {
 				preference_order: "asc",

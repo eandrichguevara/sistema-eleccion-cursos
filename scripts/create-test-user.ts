@@ -9,7 +9,7 @@ async function createTestUser() {
 		const hashedPassword = await hashPassword("password123");
 
 		// Crear el usuario
-		const user = await prisma.student.create({
+		const user = await prisma.students.create({
 			data: {
 				email: "estudiante@institucion.edu",
 				password: hashedPassword,

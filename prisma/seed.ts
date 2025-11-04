@@ -89,13 +89,26 @@ const coursesByParallel = {
 
 /**
  * Genera un email único basado en nombre y apellido
+ * Normaliza caracteres especiales (tildes, ñ, etc.)
  */
 function generateEmail(
 	firstName: string,
 	lastName: string,
 	index: number
 ): string {
-	const normalized = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${index}`;
+	// Función para normalizar caracteres con tildes y ñ
+	const normalizeText = (text: string): string => {
+		return text
+			.normalize("NFD") // Descompone caracteres con tildes
+			.replace(/[\u0300-\u036f]/g, "") // Elimina los diacríticos (tildes)
+			.replace(/ñ/g, "n")
+			.replace(/Ñ/g, "n")
+			.toLowerCase();
+	};
+
+	const normalizedFirstName = normalizeText(firstName);
+	const normalizedLastName = normalizeText(lastName);
+	const normalized = `${normalizedFirstName}.${normalizedLastName}${index}`;
 	return `${normalized}@institucion.edu`;
 }
 
@@ -197,14 +210,13 @@ async function main() {
 
 	// Limpiar datos existentes (excepto admin)
 	console.log("🗑️  Limpiando datos existentes...");
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	await (prisma as any).assignment.deleteMany({});
-	await prisma.selection.deleteMany({});
-	await prisma.course.deleteMany({});
-	await prisma.student.deleteMany({
+	await prisma.assignments.deleteMany({});
+	await prisma.lotteries.deleteMany({});
+	await prisma.selections.deleteMany({});
+	await prisma.courses.deleteMany({});
+	await prisma.students.deleteMany({
 		where: {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			role: "student" as any,
+			role: "student",
 		},
 	});
 
@@ -214,7 +226,7 @@ async function main() {
 
 	for (const [parallel, courseNames] of Object.entries(coursesByParallel)) {
 		for (const courseName of courseNames) {
-			const course = await prisma.course.create({
+			const course = await prisma.courses.create({
 				data: {
 					name: courseName,
 					parallel: parseInt(parallel),
@@ -241,8 +253,8 @@ async function main() {
 	const groups = [
 		{ level: 3, section: "A", count: 42, neurodivergentRate: 0.15 }, // 3ro A - ~6 neurodivergentes
 		{ level: 3, section: "B", count: 42, neurodivergentRate: 0.15 }, // 3ro B - ~6 neurodivergentes
-		{ level: 4, section: "A", count: 42, neurodivergentRate: 0 }, // 4to A - todos prioritarios
-		{ level: 4, section: "B", count: 42, neurodivergentRate: 0 }, // 4to B - todos prioritarios
+		{ level: 4, section: "A", count: 42, neurodivergentRate: 0.13 }, // 4to A - ~5-6 neurodivergentes
+		{ level: 4, section: "B", count: 42, neurodivergentRate: 0.13 }, // 4to B - ~5-6 neurodivergentes
 	];
 
 	let studentIndex = 1;
@@ -258,8 +270,8 @@ async function main() {
 			const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
 			const email = generateEmail(firstName, lastName, studentIndex);
 
-			const isNeurodivergent =
-				group.level === 3 && Math.random() < group.neurodivergentRate;
+			// Ahora tanto 3ro como 4to pueden ser neurodivergentes
+			const isNeurodivergent = Math.random() < group.neurodivergentRate;
 
 			// Electivos previos aleatorios (solo para 3ro y 4to)
 			const previousElectives: string[] = [];
@@ -271,7 +283,7 @@ async function main() {
 				}
 			}
 
-			const student = await prisma.student.create({
+			const student = await prisma.students.create({
 				data: {
 					email,
 					password: hashedPassword,
@@ -290,9 +302,11 @@ async function main() {
 
 	console.log(`   ✓ 168 estudiantes creados exitosamente`);
 	console.log(
-		`   • 84 estudiantes de 3ro medio (~12 neurodivergentes prioritarios)`
+		`   • 84 estudiantes de 3ro medio (~13 neurodivergentes prioritarios)`
 	);
-	console.log(`   • 84 estudiantes de 4to medio (todos prioritarios)`);
+	console.log(
+		`   • 84 estudiantes de 4to medio (~11 neurodivergentes, máxima prioridad)`
+	);
 
 	// 3. Crear selecciones para cada estudiante (con sesgo hacia cursos populares)
 	console.log("\n🎯 Generando selecciones para estudiantes...");
@@ -306,7 +320,7 @@ async function main() {
 		const selections = generateSelections(courses, i);
 
 		for (const selection of selections) {
-			await prisma.selection.create({
+			await prisma.selections.create({
 				data: {
 					student_id: student.id,
 					course_id: selection.course_id,
@@ -338,14 +352,21 @@ async function main() {
 	console.log(`   • Total de estudiantes: ${students.length}`);
 	console.log(`   • Estudiantes prioritarios: ${priorityStudents.length}`);
 	console.log(
-		`     - 4to medio: ${students.filter((s) => s.level === 4).length}`
+		`     - 4to medio neurodivergentes: ${
+			students.filter((s) => s.level === 4 && s.is_neurodivergent).length
+		}`
 	);
 	console.log(
-		`     - 3ro neurodivergentes: ${
+		`     - 3ro medio neurodivergentes: ${
 			students.filter((s) => s.level === 3 && s.is_neurodivergent).length
 		}`
 	);
-	console.log(`   • Estudiantes regulares: ${regularStudents.length}`);
+	console.log(
+		`     - 4to medio regulares: ${
+			students.filter((s) => s.level === 4 && !s.is_neurodivergent).length
+		}`
+	);
+	console.log(`   • Estudiantes regulares (3ro): ${regularStudents.length}`);
 	console.log(`   • Total de cursos: ${courses.length} (4 por paralelo)`);
 	console.log(`   • Capacidad total: ${courses.length * 42} cupos`);
 	console.log(`   • Total de selecciones: ${totalSelections}`);
@@ -353,7 +374,7 @@ async function main() {
 	// Análisis de demanda por curso
 	console.log("\n📈 Demanda por curso:");
 	for (const course of courses) {
-		const selectionsCount = await prisma.selection.count({
+		const selectionsCount = await prisma.selections.count({
 			where: { course_id: course.id },
 		});
 		const demandPercent = Math.round((selectionsCount / course.capacity) * 100);

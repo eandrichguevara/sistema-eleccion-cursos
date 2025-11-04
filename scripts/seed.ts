@@ -9,7 +9,7 @@ async function seedDatabase() {
 		console.log("👤 Creando usuario de prueba...");
 		const hashedPassword = await hashPassword("password123");
 
-		const user = await prisma.student.upsert({
+		const user = await prisma.students.upsert({
 			where: { email: "estudiante@institucion.edu" },
 			update: {},
 			create: {
@@ -45,7 +45,7 @@ async function seedDatabase() {
 		];
 
 		for (const course of courses) {
-			await prisma.course
+			await prisma.courses
 				.upsert({
 					where: {
 						// Usamos una combinación única de name y parallel
@@ -56,7 +56,7 @@ async function seedDatabase() {
 				})
 				.catch(async () => {
 					// Si el upsert falla por no encontrar ID, intentamos crear directamente
-					const existing = await prisma.course.findFirst({
+					const existing = await prisma.courses.findFirst({
 						where: {
 							name: course.name,
 							parallel: course.parallel,
@@ -64,13 +64,85 @@ async function seedDatabase() {
 					});
 
 					if (!existing) {
-						await prisma.course.create({ data: course });
+						await prisma.courses.create({ data: course });
 					}
 				});
 		}
 
-		const totalCourses = await prisma.course.count();
+		const totalCourses = await prisma.courses.count();
 		console.log(`✅ Cursos en BD: ${totalCourses}`);
+
+		// 3. Crear varios estudiantes adicionales y sus selecciones ficticias
+		console.log(
+			"\n👥 Creando estudiantes de prueba adicionales y sus selecciones..."
+		);
+		const extraStudentsCount = 30; // número de estudiantes ficticios a crear
+		const createdStudents = [];
+		for (let i = 1; i <= extraStudentsCount; i++) {
+			const email = `student${i}@institucion.edu`;
+			const level = Math.random() < 0.5 ? 3 : 4; // 50/50 entre 3ro y 4to
+			const is_neurodivergent = Math.random() < 0.12; // ~12% neurodivergentes
+
+			const student = await prisma.students.upsert({
+				where: { email },
+				update: {},
+				create: {
+					email,
+					password: hashedPassword,
+					level,
+					is_neurodivergent,
+					previous_electives: [],
+					role: "student",
+				},
+			});
+
+			createdStudents.push(student);
+		}
+
+		// Obtener cursos guardados para asignar selecciones
+		const savedCourses = await prisma.courses.findMany();
+
+		// Función ayuda: elegir un curso aleatorio por paralelo
+		function pickRandomCourse(parallel: number) {
+			const options = savedCourses.filter((c) => c.parallel === parallel);
+			return options[Math.floor(Math.random() * options.length)];
+		}
+
+		let totalSelections = 0;
+		for (let idx = 0; idx < createdStudents.length; idx++) {
+			const student = createdStudents[idx];
+
+			// Elegir un curso por cada paralelo
+			const chosen = [1, 2, 3].map((p) => pickRandomCourse(p));
+
+			// Generar 3 preferencias distintas (valores únicos entre 1..4)
+			const prefPool = [1, 2, 3, 4].sort(() => Math.random() - 0.5).slice(0, 3);
+
+			for (let j = 0; j < chosen.length; j++) {
+				const course = chosen[j];
+				const preference_order = prefPool[j];
+				await prisma.selections.create({
+					data: {
+						student_id: student.id,
+						course_id: course.id,
+						preference_order,
+					},
+				});
+				totalSelections++;
+			}
+
+			if ((idx + 1) % 10 === 0) {
+				console.log(
+					`   ✓ Selecciones generadas para ${idx + 1}/${
+						createdStudents.length
+					} estudiantes...`
+				);
+			}
+		}
+
+		console.log(
+			`   ✓ ${createdStudents.length} estudiantes creados con ${totalSelections} selecciones en total`
+		);
 
 		console.log("\n🎉 Seed completado exitosamente!");
 		console.log("\n📝 Credenciales de prueba:");

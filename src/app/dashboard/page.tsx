@@ -21,10 +21,25 @@ type ApiSelection = {
 	};
 };
 
+type Assignment = {
+	id: string;
+	courseId: string;
+	courseName: string;
+	parallel: number;
+	capacity: number;
+	assignedAt: string;
+	isPriority: boolean;
+	preferenceOrder: number;
+	assignmentType: "first" | "second" | "third" | "availability";
+};
+
 export default function Dashboard() {
 	const [selections, setSelections] = useState<Selection[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isContentLoaded, setIsContentLoaded] = useState(false);
+	const [assignments, setAssignments] = useState<Assignment[]>([]);
+	const [hasAssignments, setHasAssignments] = useState(false);
+	const [showResults, setShowResults] = useState(false);
 
 	// Datos de ejemplo hardcodeados con IDs UUID de la base de datos
 	const paralelos = [
@@ -97,6 +112,23 @@ export default function Dashboard() {
 	];
 
 	// Cargar selecciones previas al montar el componente
+	// Función para cargar los resultados de asignación
+	const loadResults = async () => {
+		try {
+			const response = await fetch("/api/results");
+			if (response.ok) {
+				const data = await response.json();
+				if (data.hasAssignments) {
+					setAssignments(data.assignments);
+					setHasAssignments(true);
+					setShowResults(true);
+				}
+			}
+		} catch (error) {
+			console.error("Error al cargar resultados:", error);
+		}
+	};
+
 	useEffect(() => {
 		const loadSelections = async () => {
 			try {
@@ -121,8 +153,8 @@ export default function Dashboard() {
 			}
 		};
 
-		// Primero cargar las selecciones
-		loadSelections().then(() => {
+		// Cargar selecciones y resultados
+		Promise.all([loadSelections(), loadResults()]).then(() => {
 			// Después de cargar, esperar un momento y activar la transición
 			setTimeout(() => {
 				setIsContentLoaded(true);
@@ -251,6 +283,38 @@ export default function Dashboard() {
 		}
 	};
 
+	// Función para obtener el icono según el tipo de asignación
+	const getAssignmentIcon = (type: string) => {
+		switch (type) {
+			case "first":
+				return "🥇";
+			case "second":
+				return "🥈";
+			case "third":
+				return "🥉";
+			case "availability":
+				return "📋";
+			default:
+				return "✓";
+		}
+	};
+
+	// Función para obtener el texto según el tipo de asignación
+	const getAssignmentText = (type: string) => {
+		switch (type) {
+			case "first":
+				return "1ª preferencia";
+			case "second":
+				return "2ª preferencia";
+			case "third":
+				return "3ª preferencia";
+			case "availability":
+				return "Por disponibilidad";
+			default:
+				return "Asignado";
+		}
+	};
+
 	return (
 		<div
 			className={`${styles.container} ${isContentLoaded ? styles.loaded : ""}`}
@@ -265,47 +329,135 @@ export default function Dashboard() {
 				<div className={styles.loadingText}>Cargando cursos...</div>
 			</div>
 			<div className={styles.header}>
-				<h1 className={styles.title}>Dashboard - Selección de Cursos</h1>
-				<button
-					onClick={() => signOut({ callbackUrl: "/" })}
-					className={styles.logoutButton}
+				<h1 className={styles.title}>
+					{showResults
+						? "Mis Cursos Asignados"
+						: "Dashboard - Selección de Cursos"}
+				</h1>
+				<div className={styles.headerActions}>
+					{hasAssignments && (
+						<button
+							onClick={() => setShowResults(!showResults)}
+							className={styles.toggleButton}
+						>
+							{showResults ? "Ver Selección" : "Ver Resultados"}
+						</button>
+					)}
+					<button
+						onClick={() => signOut({ callbackUrl: "/" })}
+						className={styles.logoutButton}
+					>
+						Cerrar Sesión
+					</button>
+				</div>
+			</div>
+
+			{/* Sección de Resultados */}
+			{showResults && hasAssignments && (
+				<div
+					className={`${styles.resultsSection} ${
+						isContentLoaded ? styles.visible : ""
+					}`}
 				>
-					Cerrar Sesión
-				</button>
-			</div>
-			<div
-				className={`${styles.paralelos} ${
-					isContentLoaded ? styles.visible : ""
-				}`}
-			>
-				{paralelos.map((paralelo) => (
-					<div key={paralelo.id} className={styles.paralelo}>
-						<h2 className={styles.paraleloTitle}>
-							{paralelo.nombre}
-							<span className={styles.paraleloCount}>
-								({getSelectionsForParallel(paralelo.id).length})
-								{getSelectionsForParallel(paralelo.id).length >= 1 && " ✓"}
-							</span>
-						</h2>
-						<div className={styles.cursos}>
-							{paralelo.cursos.map((curso) => (
-								<CourseCard
-									key={curso.id}
-									id={curso.id}
-									nombre={curso.nombre}
-									parallelId={paralelo.id}
-									currentPreference={getCoursePreference(curso.id)}
-									nextAvailablePreference={getNextAvailablePreference(
-										paralelo.id
-									)}
-									onSelect={handleSelectCourse}
-								/>
-							))}
-						</div>
+					<div className={styles.resultsHeader}>
+						<h2>🎉 ¡Felicitaciones! Tus cursos han sido asignados</h2>
+						<p className={styles.resultsSubtitle}>
+							Has sido asignado a {assignments.length} cursos. A continuación,
+							puedes ver el detalle de cada uno:
+						</p>
 					</div>
-				))}
-			</div>
-			{selections.length > 0 && (
+
+					<div className={styles.assignmentsGrid}>
+						{[1, 2, 3].map((parallelNum) => {
+							const assignment = assignments.find(
+								(a) => a.parallel === parallelNum
+							);
+							if (!assignment) return null;
+
+							return (
+								<div key={assignment.id} className={styles.assignmentCard}>
+									<div className={styles.assignmentParallel}>
+										Paralelo {parallelNum}
+									</div>
+									<div className={styles.assignmentCourse}>
+										{assignment.courseName}
+									</div>
+									<div className={styles.assignmentDetails}>
+										<span className={styles.assignmentBadge}>
+											{getAssignmentIcon(assignment.assignmentType)}{" "}
+											{getAssignmentText(assignment.assignmentType)}
+										</span>
+										{assignment.isPriority && (
+											<span className={styles.priorityBadge}>
+												⭐ Prioritario
+											</span>
+										)}
+									</div>
+									<div className={styles.assignmentDate}>
+										Asignado el:{" "}
+										{new Date(assignment.assignedAt).toLocaleDateString(
+											"es-CL",
+											{
+												year: "numeric",
+												month: "long",
+												day: "numeric",
+												hour: "2-digit",
+												minute: "2-digit",
+											}
+										)}
+									</div>
+								</div>
+							);
+						})}
+					</div>
+
+					<div className={styles.resultsFooter}>
+						<p>
+							💡 <strong>Nota:</strong> Estos son tus cursos definitivos. Si
+							tienes alguna consulta, contacta con la administración.
+						</p>
+					</div>
+				</div>
+			)}
+
+			{/* Sección de Selección (solo si no se muestran resultados) */}
+			{!showResults && (
+				<div
+					className={`${styles.paralelos} ${
+						isContentLoaded ? styles.visible : ""
+					}`}
+				>
+					{paralelos.map((paralelo) => (
+						<div key={paralelo.id} className={styles.paralelo}>
+							<h2 className={styles.paraleloTitle}>
+								{paralelo.nombre}
+								<span className={styles.paraleloCount}>
+									({getSelectionsForParallel(paralelo.id).length})
+									{getSelectionsForParallel(paralelo.id).length >= 1 && " ✓"}
+								</span>
+							</h2>
+							<div className={styles.cursos}>
+								{paralelo.cursos.map((curso) => (
+									<CourseCard
+										key={curso.id}
+										id={curso.id}
+										nombre={curso.nombre}
+										parallelId={paralelo.id}
+										currentPreference={getCoursePreference(curso.id)}
+										nextAvailablePreference={getNextAvailablePreference(
+											paralelo.id
+										)}
+										onSelect={handleSelectCourse}
+									/>
+								))}
+							</div>
+						</div>
+					))}
+				</div>
+			)}
+
+			{/* Resumen de selecciones (solo si no se muestran resultados) */}
+			{!showResults && selections.length > 0 && (
 				<div
 					className={`${styles.selectionSummary} ${
 						isContentLoaded ? styles.visible : ""
@@ -342,20 +494,24 @@ export default function Dashboard() {
 						})}
 					</div>
 				</div>
-			)}{" "}
-			<button
-				className={`${styles.submitButton} ${
-					isContentLoaded ? styles.visible : ""
-				}`}
-				onClick={handleSubmit}
-				disabled={!hasAllParallelSelections() || isLoading}
-			>
-				{isLoading
-					? "Guardando..."
-					: `Enviar Selección${
-							selections.length > 0 ? ` (${selections.length})` : ""
-					  }`}
-			</button>
+			)}
+
+			{/* Botón de envío (solo si no se muestran resultados) */}
+			{!showResults && (
+				<button
+					className={`${styles.submitButton} ${
+						isContentLoaded ? styles.visible : ""
+					}`}
+					onClick={handleSubmit}
+					disabled={!hasAllParallelSelections() || isLoading}
+				>
+					{isLoading
+						? "Guardando..."
+						: `Enviar Selección${
+								selections.length > 0 ? ` (${selections.length})` : ""
+						  }`}
+				</button>
+			)}
 		</div>
 	);
 }

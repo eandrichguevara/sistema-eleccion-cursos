@@ -13,7 +13,7 @@ async function viewLotteries() {
 
 	try {
 		// Obtener todos los sorteos con sus resultados
-		const lotteries = await prisma.lottery.findMany({
+		const lotteries = await prisma.lotteries.findMany({
 			include: {
 				lottery_results: {
 					orderBy: {
@@ -47,7 +47,12 @@ async function viewLotteries() {
 			console.log(
 				`   📚 Curso: ${lottery.course_name} (Paralelo ${lottery.parallel})`
 			);
-			console.log(`   🎯 Preferencia: ${lottery.preference}ª`);
+			// Display preference as 1-based (DB may store 0-based)
+			const displayPref =
+				typeof lottery.preference === "number"
+					? lottery.preference + 1
+					: lottery.preference;
+			console.log(`   🎯 Preferencia: ${displayPref}ª`);
 			console.log(`   👥 Candidatos: ${lottery.candidates}`);
 			console.log(`   🎟️  Cupos disponibles: ${lottery.available_spots}`);
 			console.log(`   📅 Fecha: ${lottery.executed_at.toLocaleString()}`);

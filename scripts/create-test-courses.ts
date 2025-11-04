@@ -25,7 +25,7 @@ async function createTestCourses() {
 		];
 
 		for (const course of courses) {
-			const created = await prisma.course.create({
+			const created = await prisma.courses.create({
 				data: course,
 			});
 			console.log(`✅ Creado: ${created.name} (Paralelo ${created.parallel})`);

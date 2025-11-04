@@ -1,0 +1,28 @@
+
+> sistema-eleccion-cursos@0.1.0 dev
+> next dev --turbopack
+
+
+✘ next.js v15.5.5 is not yet supported in the Community edition of Console Ninja.
+We are working hard on it for you https://tinyurl.com/3h9mtwra.
+
+Estimated release dates:
+  - Community users: around 12th December, 2025 (subject to team availability)
+  - PRO users:       priority access is available now
+
+
+✘ next.js v15.5.5 is not yet supported in the Community edition of Console Ninja.
+We are working hard on it for you https://tinyurl.com/3h9mtwra.
+
+Estimated release dates:
+  - Community users: around 12th December, 2025 (subject to team availability)
+  - PRO users:       priority access is available now
+
+   ▲ Next.js 15.5.5 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.84:3000
+   - Environments: .env
+
+ ✓ Starting...
+ ✓ Compiled middleware in 240ms
+ ✓ Ready in 1262ms

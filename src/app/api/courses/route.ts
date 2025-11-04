@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
 	try {
-		const courses = await prisma.course.findMany({
+		const courses = await prisma.courses.findMany({
 			orderBy: [{ parallel: "asc" }, { name: "asc" }],
 		});
 

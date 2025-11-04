@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,82 +7,126 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Student {
-  id                  String       @id @default(uuid()) @db.Uuid
-  email               String       @unique
-  password            String
-  level               Int
-  is_neurodivergent   Boolean
-  previous_electives  String[]
-  role                String       @default("student") // "student" or "admin"
-  selections          Selection[]
-  assignments         Assignment[]
-
-  @@map("students")
-}
-
-model Course {
-  id          String       @id @default(uuid()) @db.Uuid
-  name        String
-  parallel    Int
-  capacity    Int          @default(42)
-  selections  Selection[]
-  assignments Assignment[]
-
-  @@map("courses")
-}
-
-model Selection {
-  id               String  @id @default(uuid()) @db.Uuid
-  student_id       String  @db.Uuid
-  course_id        String  @db.Uuid
+model assignments {
+  id               String   @id @default(uuid()) @db.Uuid
+  student_id       String   @db.Uuid
+  course_id        String   @db.Uuid
+  assigned_at      DateTime @default(now())
+  is_priority      Boolean  @default(false)
   preference_order Int
+  courses          courses  @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  students         students @relation(fields: [student_id], references: [id], onDelete: Cascade)
 
-  student Student @relation(fields: [student_id], references: [id], onDelete: Cascade)
-  course  Course  @relation(fields: [course_id], references: [id], onDelete: Cascade)
-
-  @@map("selections")
-}
-
-model Assignment {
-  id                String   @id @default(uuid()) @db.Uuid
-  student_id        String   @db.Uuid
-  course_id         String   @db.Uuid
-  assigned_at       DateTime @default(now())
-  is_priority       Boolean  @default(false)
-  preference_order  Int
-
-  student Student @relation(fields: [student_id], references: [id], onDelete: Cascade)
-  course  Course  @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  // Audit: relacionar esta asignación a una ejecución (batch) de asignación
+  assignment_run_id String? @db.Uuid
+  assignment_run    assignment_runs? @relation(fields: [assignment_run_id], references: [id], onDelete: Cascade)
 
   @@unique([student_id, course_id])
-  @@map("assignments")
 }
 
-model Lottery {
-  id              String         @id @default(uuid()) @db.Uuid
-  course_id       String         @db.Uuid
+model courses {
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String
+  parallel    Int
+  capacity    Int           @default(42)
+  assignments assignments[]
+  selections  selections[]
+}
+
+model lotteries {
+  id              String            @id @default(uuid()) @db.Uuid
+  course_id       String            @db.Uuid
   course_name     String
   parallel        Int
   preference      Int
-  candidates      Int            // Total de estudiantes que querían este curso
-  available_spots Int            // Cupos disponibles
-  executed_at     DateTime       @default(now())
-  
-  lottery_results LotteryResult[]
+  candidates      Int
+  available_spots Int
+  executed_at     DateTime          @default(now())
+  lottery_results lottery_results[]
 
-  @@map("lotteries")
+  // Audit: vincular el sorteo a la ejecución (batch) que lo generó
+  assignment_run_id String? @db.Uuid
+  assignment_run    assignment_runs? @relation(fields: [assignment_run_id], references: [id], onDelete: Cascade)
 }
 
-model LotteryResult {
-  id          String   @id @default(uuid()) @db.Uuid
-  lottery_id  String   @db.Uuid
-  student_id  String   @db.Uuid
+model lottery_results {
+  id            String    @id @default(uuid()) @db.Uuid
+  lottery_id    String    @db.Uuid
+  student_id    String    @db.Uuid
   student_email String
-  won         Boolean  // true = ganó el sorteo, false = perdió
-  
-  lottery     Lottery  @relation(fields: [lottery_id], references: [id], onDelete: Cascade)
+  won           Boolean
+  lotteries     lotteries @relation(fields: [lottery_id], references: [id], onDelete: Cascade)
 
-  @@map("lottery_results")
+  // Audit: información opcional del contexto de la petición
+  request_ip        String?
+  user_agent        String?
+  execution_context Json?
 }
 
+// Registro de ejecuciones (batches) de asignación para auditoría
+model assignment_runs {
+  id                 String    @id @default(uuid()) @db.Uuid
+  initiated_by       String?   @db.Uuid
+  initiated_by_email String?
+  seed               String?
+  notes              String?
+  metadata           Json?
+  executed_at        DateTime  @default(now())
+
+  // Relaciones: un run puede agrupar muchas asignaciones y sorteos
+  lotteries          lotteries[]
+  assignments        assignments[]
+  assignment_logs    assignment_logs[]
+}
+
+// Logs detallados del proceso de asignación (sorteos, decisiones, errores, info)
+model assignment_logs {
+  id                String   @id @default(uuid()) @db.Uuid
+  assignment_run_id String?  @db.Uuid
+  event_type        String
+  event_subtype     String?
+
+  student_id        String?  @db.Uuid
+  student_email     String?
+
+  course_id         String?  @db.Uuid
+  course_name       String?
+
+  parallel          Int?
+  preference        Int?
+  is_priority       Boolean?
+
+  details           Json?
+
+  request_ip        String?
+  user_agent        String?
+
+  created_at        DateTime @default(now())
+
+  // Relaciones
+  assignment_run    assignment_runs? @relation(fields: [assignment_run_id], references: [id], onDelete: Cascade)
+
+  @@index([assignment_run_id])
+  @@index([student_id])
+}
+
+model selections {
+  id               String   @id @default(uuid()) @db.Uuid
+  student_id       String   @db.Uuid
+  course_id        String   @db.Uuid
+  preference_order Int
+  courses          courses  @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  students         students @relation(fields: [student_id], references: [id], onDelete: Cascade)
+}
+
+model students {
+  id                 String        @id @default(uuid()) @db.Uuid
+  email              String        @unique
+  password           String
+  level              Int
+  is_neurodivergent  Boolean
+  previous_electives String[]
+  role               String        @default("student")
+  assignments        assignments[]
+  selections         selections[]
+}

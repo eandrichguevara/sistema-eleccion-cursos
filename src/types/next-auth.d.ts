@@ -7,6 +7,7 @@ declare module "next-auth" {
 		name?: string;
 		level: number;
 		isNeurodivergent: boolean;
+		role: string;
 	}
 
 	interface Session {
@@ -16,6 +17,7 @@ declare module "next-auth" {
 			name?: string;
 			level: number;
 			isNeurodivergent: boolean;
+			role: string;
 		};
 	}
 }
@@ -26,5 +28,6 @@ declare module "next-auth/jwt" {
 		email: string;
 		level: number;
 		isNeurodivergent: boolean;
+		role: string;
 	}
 }

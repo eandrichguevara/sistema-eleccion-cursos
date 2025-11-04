@@ -8,10 +8,15 @@
 		"start": "next start",
 		"lint": "eslint",
 		"db:seed": "tsx prisma/seed.ts",
+		"db:create-admin": "tsx src/lib/create-admin.ts",
 		"db:test-assignment": "tsx src/lib/assignment-test.ts",
 		"db:view-lotteries": "tsx src/lib/view-lotteries.ts",
-		"db:studio": "prisma studio"
+		"db:test-export": "tsx src/lib/test-export.ts",
+		"db:generate-csv": "tsx src/lib/generate-csv.ts",
+		"db:studio": "prisma studio",
+		"assign": "tsx scripts/run-assignment.ts"
 	},
+	"test": "vitest",
 	"dependencies": {
 		"@prisma/client": "^6.17.1",
 		"bcryptjs": "^3.0.2",
@@ -30,6 +35,13 @@
 		"eslint-config-next": "15.5.5",
 		"prisma": "^6.17.1",
 		"tsx": "^4.20.6",
-		"typescript": "^5"
+		"typescript": "^5",
+		"vitest": "^1.0.0"
+	},
+	"vitest": {
+		"test": {
+			"globals": true,
+			"environment": "node"
+		}
 	}
 }

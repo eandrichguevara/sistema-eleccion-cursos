@@ -116,10 +116,15 @@ function generateEmail(
  * Genera selecciones para un estudiante
  * Con sesgo hacia cursos populares para crear sobrecupo
  * Esto forzará asignaciones a 2da, 3ra preferencia y desempate aleatorio
+ *
+ * IMPORTANTE: Las prioridades son POR PARALELO, no globales.
+ * Un estudiante puede seleccionar 1-3 cursos por paralelo, cada uno con su propia prioridad (1, 2, 3).
+ * Por ejemplo: Del paralelo 1 -> 1° Programación, 2° Matemáticas, 3° Física
  */
 function generateSelections(
 	courses: Array<{ id: string; parallel: number; name: string }>,
-	studentIndex: number
+	studentIndex: number,
+	numberOfParallels?: number // Cuántos paralelos seleccionar (1, 2 o 3)
 ): Array<{
 	course_id: string;
 	preference_order: number;
@@ -140,66 +145,95 @@ function generateSelections(
 	// Los primeros 60% de estudiantes preferirán cursos populares
 	const prefersPopular = studentIndex < 180; // 60% de 300
 
-	// Obtener un curso de cada paralelo
-	for (let parallel = 1; parallel <= 3; parallel++) {
-		const parallelCourses = courses.filter((c) => c.parallel === parallel);
-		let selectedCourse;
+	// Determinar cuántos paralelos seleccionar (1, 2 o 3)
+	const parallelsToSelect = numberOfParallels || 3;
 
-		if (prefersPopular) {
-			// Intentar seleccionar un curso popular del paralelo
-			const popularInParallel = parallelCourses.filter((c) =>
-				popularCourses.includes(c.name)
-			);
-			const moderateInParallel = parallelCourses.filter((c) =>
-				moderateCourses.includes(c.name)
-			);
-
-			// 70% popular, 20% moderado, 10% aleatorio
-			const rand = Math.random();
-			if (rand < 0.7 && popularInParallel.length > 0) {
-				selectedCourse =
-					popularInParallel[
-						Math.floor(Math.random() * popularInParallel.length)
-					];
-			} else if (rand < 0.9 && moderateInParallel.length > 0) {
-				selectedCourse =
-					moderateInParallel[
-						Math.floor(Math.random() * moderateInParallel.length)
-					];
-			} else {
-				selectedCourse =
-					parallelCourses[Math.floor(Math.random() * parallelCourses.length)];
-			}
-		} else {
-			// Estudiantes que prefieren cursos menos populares (más variedad)
-			const unpopularInParallel = parallelCourses.filter(
-				(c) =>
-					!popularCourses.includes(c.name) && !moderateCourses.includes(c.name)
-			);
-
-			if (unpopularInParallel.length > 0 && Math.random() < 0.6) {
-				selectedCourse =
-					unpopularInParallel[
-						Math.floor(Math.random() * unpopularInParallel.length)
-					];
-			} else {
-				selectedCourse =
-					parallelCourses[Math.floor(Math.random() * parallelCourses.length)];
-			}
+	// Seleccionar paralelos aleatorios si no son los 3
+	let selectedParallels: number[];
+	if (parallelsToSelect === 3) {
+		selectedParallels = [1, 2, 3];
+	} else {
+		const allParallels = [1, 2, 3];
+		selectedParallels = [];
+		for (let i = 0; i < parallelsToSelect; i++) {
+			const randomIndex = Math.floor(Math.random() * allParallels.length);
+			selectedParallels.push(allParallels[randomIndex]);
+			allParallels.splice(randomIndex, 1);
 		}
-
-		selections.push({
-			course_id: selectedCourse.id,
-			preference_order: parallel,
-		});
+		selectedParallels.sort((a, b) => a - b);
 	}
 
-	// Mezclar las preferencias (shuffle)
-	for (let i = selections.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
-		const temp = selections[i].preference_order;
-		selections[i].preference_order = selections[j].preference_order;
-		selections[j].preference_order = temp;
+	// Para cada paralelo seleccionado, elegir 1-3 cursos con prioridades 1, 2, 3
+	for (const parallel of selectedParallels) {
+		const parallelCourses = courses.filter((c) => c.parallel === parallel);
+
+		// Decidir cuántos cursos seleccionar de este paralelo (1, 2 o 3)
+		// 40% -> 1 curso, 30% -> 2 cursos, 30% -> 3 cursos
+		let coursesToSelect = 1;
+		const rand = Math.random();
+		if (rand < 0.4) {
+			coursesToSelect = 1;
+		} else if (rand < 0.7) {
+			coursesToSelect = 2;
+		} else {
+			coursesToSelect = 3;
+		}
+
+		// No podemos seleccionar más cursos de los que hay
+		coursesToSelect = Math.min(coursesToSelect, parallelCourses.length);
+
+		// Seleccionar cursos aleatoriamente sin repetir
+		const selectedCourses: Array<{ id: string; name: string }> = [];
+		const availableCourses = [...parallelCourses];
+
+		for (let i = 0; i < coursesToSelect; i++) {
+			let selectedCourse;
+
+			if (prefersPopular && i === 0) {
+				// Para la primera preferencia, intentar seleccionar un curso popular
+				const popularInParallel = availableCourses.filter((c) =>
+					popularCourses.includes(c.name)
+				);
+				const moderateInParallel = availableCourses.filter((c) =>
+					moderateCourses.includes(c.name)
+				);
+
+				const popularRand = Math.random();
+				if (popularRand < 0.7 && popularInParallel.length > 0) {
+					selectedCourse =
+						popularInParallel[
+							Math.floor(Math.random() * popularInParallel.length)
+						];
+				} else if (popularRand < 0.9 && moderateInParallel.length > 0) {
+					selectedCourse =
+						moderateInParallel[
+							Math.floor(Math.random() * moderateInParallel.length)
+						];
+				} else {
+					selectedCourse =
+						availableCourses[
+							Math.floor(Math.random() * availableCourses.length)
+						];
+				}
+			} else {
+				// Para las siguientes preferencias, seleccionar aleatoriamente
+				selectedCourse =
+					availableCourses[Math.floor(Math.random() * availableCourses.length)];
+			}
+
+			selectedCourses.push(selectedCourse);
+			// Remover el curso seleccionado para no repetirlo
+			const index = availableCourses.indexOf(selectedCourse);
+			availableCourses.splice(index, 1);
+		}
+
+		// Agregar las selecciones con sus prioridades (1, 2, 3)
+		selectedCourses.forEach((course, index) => {
+			selections.push({
+				course_id: course.id,
+				preference_order: index + 1, // 1, 2 o 3
+			});
+		});
 	}
 
 	return selections;
@@ -360,12 +394,11 @@ async function main() {
 			selectionsToCreate = [];
 		} else if (rnd < 0.25) {
 			// Parciales: tomar 1 o 2 preferencias aleatorias
-			const full = generateSelections(courses, i);
-			const take = Math.random() < 0.6 ? 2 : 1; // 60% de parciales tendrán 2, 40% tendrán 1
-			selectionsToCreate = full.slice(0, take);
+			const numSelections = Math.random() < 0.6 ? 2 : 1; // 60% de parciales tendrán 2, 40% tendrán 1
+			selectionsToCreate = generateSelections(courses, i, numSelections);
 		} else {
 			// Completas
-			selectionsToCreate = generateSelections(courses, i);
+			selectionsToCreate = generateSelections(courses, i, 3);
 		}
 
 		for (const selection of selectionsToCreate) {

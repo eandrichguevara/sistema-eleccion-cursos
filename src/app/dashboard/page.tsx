@@ -15,7 +15,7 @@ type Selection = {
 type ApiSelection = {
 	course_id: string;
 	preference_order: number;
-	course: {
+	courses: {
 		name: string;
 		parallel: number;
 	};
@@ -33,6 +33,22 @@ type Assignment = {
 	assignmentType: "first" | "second" | "third" | "availability";
 };
 
+type Course = {
+	id: string;
+	name: string;
+	parallel: number;
+	capacity: number;
+};
+
+type Parallel = {
+	id: number;
+	nombre: string;
+	cursos: Array<{
+		id: string;
+		nombre: string;
+	}>;
+};
+
 export default function Dashboard() {
 	const [selections, setSelections] = useState<Selection[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
@@ -40,76 +56,7 @@ export default function Dashboard() {
 	const [assignments, setAssignments] = useState<Assignment[]>([]);
 	const [hasAssignments, setHasAssignments] = useState(false);
 	const [showResults, setShowResults] = useState(false);
-
-	// Datos de ejemplo hardcodeados con IDs UUID de la base de datos
-	const paralelos = [
-		{
-			id: 1,
-			nombre: "Paralelo 1",
-			cursos: [
-				{
-					id: "e4918312-919b-4e4b-a18d-ba4a01a26822",
-					nombre: "Matemáticas Avanzadas",
-				},
-				{
-					id: "79142fe9-a91f-4a06-8342-24aef66cdbfe",
-					nombre: "Física Cuántica",
-				},
-				{
-					id: "e98b982b-63d5-4358-8697-58d7c7d0ddaa",
-					nombre: "Química Orgánica",
-				},
-				{
-					id: "d493ef1f-a176-4b19-9c66-52302b33797d",
-					nombre: "Programación I",
-				},
-			],
-		},
-		{
-			id: 2,
-			nombre: "Paralelo 2",
-			cursos: [
-				{
-					id: "91ed4c4a-48c8-427f-9b25-086b0624c0bd",
-					nombre: "Literatura Contemporánea",
-				},
-				{
-					id: "75256b5e-cec6-4d07-9cc9-263da6590325",
-					nombre: "Historia Universal",
-				},
-				{
-					id: "afa61754-2b9e-431c-b714-7378f61d7b21",
-					nombre: "Biología Molecular",
-				},
-				{
-					id: "ece30772-f050-4f94-a293-ca7a3d0492ef",
-					nombre: "Inglés Avanzado",
-				},
-			],
-		},
-		{
-			id: 3,
-			nombre: "Paralelo 3",
-			cursos: [
-				{
-					id: "5a9075ff-c92f-488d-a231-a1c85b1f8dae",
-					nombre: "Economía Global",
-				},
-				{
-					id: "78e3e9b5-f3f7-4560-8121-1c70cc1d0a59",
-					nombre: "Estadística Aplicada",
-				},
-				{
-					id: "dd474111-8e97-4d5b-b7d5-5c4b272ff0cc",
-					nombre: "Diseño Digital",
-				},
-				{
-					id: "7a9abf9d-38a0-429a-ad98-e30ca093a6b1",
-					nombre: "Bases de Datos",
-				},
-			],
-		},
-	];
+	const [paralelos, setParalelos] = useState<Parallel[]>([]);
 
 	// Cargar selecciones previas al montar el componente
 	// Función para cargar los resultados de asignación
@@ -129,6 +76,40 @@ export default function Dashboard() {
 		}
 	};
 
+	// Función para cargar los cursos desde la API
+	const loadCourses = async () => {
+		try {
+			const response = await fetch("/api/courses");
+			if (response.ok) {
+				const courses: Course[] = await response.json();
+
+				// Agrupar cursos por paralelo
+				const grouped: { [key: number]: Parallel } = {};
+				courses.forEach((course) => {
+					if (!grouped[course.parallel]) {
+						grouped[course.parallel] = {
+							id: course.parallel,
+							nombre: `Paralelo ${course.parallel}`,
+							cursos: [],
+						};
+					}
+					grouped[course.parallel].cursos.push({
+						id: course.id,
+						nombre: course.name,
+					});
+				});
+
+				// Convertir a array y ordenar por paralelo
+				const paralelosArray = Object.values(grouped).sort(
+					(a, b) => a.id - b.id
+				);
+				setParalelos(paralelosArray);
+			}
+		} catch (error) {
+			console.error("Error al cargar cursos:", error);
+		}
+	};
+
 	useEffect(() => {
 		const loadSelections = async () => {
 			try {
@@ -140,8 +121,8 @@ export default function Dashboard() {
 						const loadedSelections: Selection[] = data.selections.map(
 							(sel: ApiSelection) => ({
 								courseId: sel.course_id, // Ya es un UUID string
-								courseName: sel.course.name,
-								parallelId: sel.course.parallel,
+								courseName: sel.courses.name,
+								parallelId: sel.courses.parallel,
 								preference: sel.preference_order,
 							})
 						);
@@ -153,8 +134,8 @@ export default function Dashboard() {
 			}
 		};
 
-		// Cargar selecciones y resultados
-		Promise.all([loadSelections(), loadResults()]).then(() => {
+		// Cargar cursos, selecciones y resultados
+		Promise.all([loadCourses(), loadSelections(), loadResults()]).then(() => {
 			// Después de cargar, esperar un momento y activar la transición
 			setTimeout(() => {
 				setIsContentLoaded(true);
